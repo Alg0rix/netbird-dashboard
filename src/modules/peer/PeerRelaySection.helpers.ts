@@ -65,3 +65,28 @@ export function relayStatusExplanation(status: RelayPolicyStatus): string {
       return "Unknown: a working path has not been confirmed.";
   }
 }
+
+export function relayStatusAtTime(
+  status: RelayPolicyStatus,
+  refreshFailed: boolean,
+  now: number,
+): RelayPolicyStatus {
+  const expired = status.endpoints.some(
+    (entry) =>
+      !Number.isFinite(Date.parse(entry.expires_at)) ||
+      Date.parse(entry.expires_at) <= now,
+  );
+  if (!refreshFailed && !expired) return status;
+  return {
+    ...status,
+    healthy: false,
+    application: "stale",
+    transport: "unknown",
+    relay_id: "",
+    endpoints: status.endpoints.map((entry) => ({
+      ...entry,
+      current:
+        !refreshFailed && entry.current && Date.parse(entry.expires_at) > now,
+    })),
+  };
+}

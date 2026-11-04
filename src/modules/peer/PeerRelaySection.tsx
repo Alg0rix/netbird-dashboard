@@ -19,7 +19,7 @@ import {
 import { RestrictedAccess } from "@components/ui/RestrictedAccess";
 import useFetchApi, { useApiCall } from "@utils/api";
 import Link from "next/link";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { usePermissions } from "@/contexts/PermissionsProvider";
 import type { Peer } from "@/interfaces/Peer";
 import type {
@@ -31,6 +31,7 @@ import { RelayPolicyDetail } from "@/modules/relay-policies/RelayPolicyDetail";
 import { useRelayPolicyConfiguration } from "@/modules/relay-policies/useRelayPolicyConfiguration";
 import {
   relayPairPoliciesForPeer,
+  relayStatusAtTime,
   relayStatusExplanation,
   relayStatusMatchesScope,
 } from "./PeerRelaySection.helpers";
@@ -164,10 +165,28 @@ function RelayScopeStatus({
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
   const inFlight = useRef(false);
-  const status =
+  const [now, setNow] = useState(() => Date.now());
+  const scopedStatus =
     data && relayStatusMatchesScope(data, local, remote) ? data : undefined;
+  useEffect(() => {
+    const expiries =
+      scopedStatus?.endpoints
+        .map((entry) => Date.parse(entry.expires_at))
+        .filter((expiry) => Number.isFinite(expiry) && expiry > now) ?? [];
+    if (!expiries.length) return;
+    const timer = setTimeout(
+      () => setNow(Date.now()),
+      Math.min(2147483647, Math.max(0, Math.min(...expiries) - Date.now())),
+    );
+    return () => clearTimeout(timer);
+  }, [scopedStatus, now]);
+  const status = scopedStatus
+    ? relayStatusAtTime(scopedStatus, !!error, now)
+    : undefined;
+  const retryAvailable = !!status && !error && status.application !== "stale";
   const performRetry = async () => {
-    if (!canRetry || !retryPolicy || inFlight.current) return;
+    if (!canRetry || !retryAvailable || !retryPolicy || inFlight.current)
+      return;
     inFlight.current = true;
     setBusy(true);
     setFeedback("");
@@ -205,8 +224,10 @@ function RelayScopeStatus({
       }
       loading={isLoading}
       canRetry={canRetry}
+      retryDisabled={!retryAvailable}
       canEdit={canEdit}
       onRetry={() => {
+        if (!retryAvailable) return;
         setFeedback("");
         setRetryPolicy(status?.policy);
         setConfirm(true);
@@ -247,6 +268,12 @@ function RelayScopeStatus({
                 "none"}
               .
             </p>
+            {!retryAvailable && (
+              <p role="alert">
+                Current relay status is unavailable. Refresh status before
+                requesting a retry.
+              </p>
+            )}
             <ModalFooter>
               <Button disabled={busy} onClick={() => setConfirm(false)}>
                 Cancel
@@ -254,7 +281,7 @@ function RelayScopeStatus({
               <Button
                 variant="primary"
                 data-testid="relay-confirm-retry"
-                disabled={busy}
+                disabled={busy || !retryAvailable}
                 onClick={performRetry}
               >
                 {busy ? "Requesting..." : "Confirm retry"}
@@ -275,6 +302,7 @@ export function RelayScopeView({
   loading = false,
   error,
   canRetry = false,
+  retryDisabled = false,
   canEdit = canRetry,
   onRetry,
   children,
@@ -286,6 +314,7 @@ export function RelayScopeView({
   loading?: boolean;
   error?: string;
   canRetry?: boolean;
+  retryDisabled?: boolean;
   canEdit?: boolean;
   onRetry?: () => void;
   children?: React.ReactNode;
@@ -393,7 +422,7 @@ export function RelayScopeView({
               {canRetry && status.policy && (
                 <Button
                   data-testid={`relay-${scope}-retry`}
-                  disabled={status.policy.state === "blocked"}
+                  disabled={retryDisabled || status.policy.state === "blocked"}
                   onClick={onRetry}
                 >
                   Retry preferred

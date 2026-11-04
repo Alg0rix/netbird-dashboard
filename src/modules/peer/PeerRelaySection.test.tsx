@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -24,6 +25,7 @@ const access = vi.hoisted(() => ({
   supported: true,
   code: 0,
   status: undefined as RelayPolicyStatus | undefined,
+  statusError: undefined as { code: number } | undefined,
   post: vi.fn(async (_body: unknown) => ({ generation: 2 })),
 }));
 vi.mock("@/contexts/PermissionsProvider", () => ({
@@ -41,6 +43,7 @@ vi.mock("@/modules/relay-policies/useRelayPolicyConfiguration", () => ({
 vi.mock("@utils/api", () => ({
   default: (url: string) => ({
     data: url.includes("/status?") ? access.status : [],
+    error: url.includes("/status?") ? access.statusError : undefined,
     mutate: vi.fn(),
   }),
   useApiCall: () => ({ post: access.post }),
@@ -54,10 +57,80 @@ afterEach(() => {
   access.supported = true;
   access.code = 0;
   access.status = undefined;
+  access.statusError = undefined;
+  vi.useRealTimers();
   access.post.mockClear();
 });
 
 describe("peer relay status", () => {
+  it("expires cached health without a new response and preserves observation history", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-04T12:00:00Z"));
+    access.status = {
+      ...relayStatusFixture,
+      peer_b: "",
+      endpoints: [{ ...relayStatusFixture.endpoints[0], remote_peer_id: "" }],
+    };
+    render(
+      <PeerRelaySection peer={{ id: "peer-a", name: "Peer A" } as Peer} />,
+    );
+    expect(screen.getByTestId("relay-home-application").textContent).toContain(
+      "Applied:",
+    );
+    fireEvent.click(screen.getByTestId("relay-home-retry"));
+    act(() => vi.advanceTimersByTime(45001));
+    expect(screen.getByTestId("relay-home-application").textContent).toContain(
+      "Stale:",
+    );
+    expect(screen.getByText(/Transport health:/).textContent).toContain(
+      "not confirmed",
+    );
+    expect(screen.getByText(/applied \/ none/).textContent).toContain("stale");
+    expect(screen.getByText("2026-11-04T12:00:00Z")).toBeTruthy();
+    expect(screen.getByText("2026-11-04T12:00:45Z")).toBeTruthy();
+    expect(
+      (screen.getByTestId("relay-home-retry") as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByTestId("relay-confirm-retry") as HTMLButtonElement).disabled,
+    ).toBe(true);
+    fireEvent.click(screen.getByTestId("relay-confirm-retry"));
+    expect(access.post).not.toHaveBeenCalled();
+  });
+
+  it("marks cached observations stale immediately on failed refresh and recovers with fresh reports", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-04T12:00:00Z"));
+    access.status = {
+      ...relayStatusFixture,
+      peer_b: "",
+      endpoints: [{ ...relayStatusFixture.endpoints[0], remote_peer_id: "" }],
+    };
+    const peer = { id: "peer-a", name: "Peer A" } as Peer;
+    const view = render(<PeerRelaySection peer={peer} />);
+    access.statusError = { code: 503 };
+    view.rerender(<PeerRelaySection peer={peer} />);
+    expect(screen.getByTestId("relay-home-application").textContent).toContain(
+      "Stale:",
+    );
+    expect(screen.getByText(/Transport health:/).textContent).toContain(
+      "not confirmed",
+    );
+    expect(screen.getByText(/applied \/ none/).textContent).toContain("stale");
+    expect(
+      (screen.getByTestId("relay-home-retry") as HTMLButtonElement).disabled,
+    ).toBe(true);
+    access.statusError = undefined;
+    access.status = structuredClone(access.status);
+    view.rerender(<PeerRelaySection peer={peer} />);
+    expect(screen.getByTestId("relay-home-application").textContent).toContain(
+      "Applied:",
+    );
+    expect(
+      (screen.getByTestId("relay-home-retry") as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
   it("pins retry digest while background status refreshes and submits once", async () => {
     access.status = { ...relayStatusFixture, peer_b: "", endpoints: [] };
     const peer = { id: "peer-a", name: "Peer A" } as Peer;
