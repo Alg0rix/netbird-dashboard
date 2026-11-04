@@ -5,6 +5,7 @@ const modules = [
   "groups",
   "setup_keys",
   "policies",
+  "relays",
   "assistant",
   "networks",
   "routes",

@@ -37,22 +37,25 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { EditPeerNameModal } from "@/modules/peers/EditPeerNameModal";
 import React, { useMemo, useState } from "react";
 import Skeleton from "react-loading-skeleton";
 import { useSWRConfig } from "swr";
-import {
-  TrafficEventsPeerTabContent,
-  TrafficEventsPeerTabTrigger,
-} from "@/cloud/traffic-events/TrafficEventsPeerTabContent";
 import RoundedFlag from "@/assets/countries/RoundedFlag";
 import CircleIcon from "@/assets/icons/CircleIcon";
 import NetBirdIcon from "@/assets/icons/NetBirdIcon";
 import PeerIcon from "@/assets/icons/PeerIcon";
 import ReverseProxyIcon from "@/assets/icons/ReverseProxyIcon";
+import {
+  TrafficEventsPeerTabContent,
+  TrafficEventsPeerTabTrigger,
+} from "@/cloud/traffic-events/TrafficEventsPeerTabContent";
 import { useCountries } from "@/contexts/CountryProvider";
 import PeerProvider, { usePeer } from "@/contexts/PeerProvider";
 import { usePermissions } from "@/contexts/PermissionsProvider";
+import ReverseProxiesProvider, {
+  flattenReverseProxies,
+  useReverseProxies,
+} from "@/contexts/ReverseProxiesProvider";
 import RoutesProvider from "@/contexts/RoutesProvider";
 import { useHasChanges } from "@/hooks/useHasChanges";
 import type { Group } from "@/interfaces/Group";
@@ -61,18 +64,17 @@ import type { User } from "@/interfaces/User";
 import PageContainer from "@/layouts/PageContainer";
 import useGroupHelper from "@/modules/groups/useGroupHelper";
 import { AccessiblePeersSection } from "@/modules/peer/AccessiblePeersSection";
-import { PeerNetworkRoutesSection } from "@/modules/peer/PeerNetworkRoutesSection";
-import { PeerRemoteJobsSection } from "@/modules/peer/PeerRemoteJobsSection";
-import ReverseProxiesProvider, {
-  flattenReverseProxies,
-  useReverseProxies,
-} from "@/contexts/ReverseProxiesProvider";
-import { ReverseProxyFlatTargetsTabContent } from "@/modules/reverse-proxy/targets/flat/ReverseProxyFlatTargetsTabContent";
 import { PeerEditIPModal } from "@/modules/peer/PeerEditIPModal";
+import { PeerExpirationSettings } from "@/modules/peer/PeerExpirationSettings";
+import { PeerNetworkRoutesSection } from "@/modules/peer/PeerNetworkRoutesSection";
+import { PeerRelaySection } from "@/modules/peer/PeerRelaySection";
+import { PeerRemoteJobsSection } from "@/modules/peer/PeerRemoteJobsSection";
 import { PeerSSHToggle } from "@/modules/peer/PeerSSHToggle";
+import { EditPeerNameModal } from "@/modules/peers/EditPeerNameModal";
+import { useRelayPolicyConfiguration } from "@/modules/relay-policies/useRelayPolicyConfiguration";
 import { RDPButton } from "@/modules/remote-access/rdp/RDPButton";
 import { SSHButton } from "@/modules/remote-access/ssh/SSHButton";
-import { PeerExpirationSettings } from "@/modules/peer/PeerExpirationSettings";
+import { ReverseProxyFlatTargetsTabContent } from "@/modules/reverse-proxy/targets/flat/ReverseProxyFlatTargetsTabContent";
 
 export default function PeerPage() {
   const queryParameter = useSearchParams();
@@ -326,6 +328,10 @@ const PeerHeader = () => {
 const PeerOverviewTabs = () => {
   const { peer } = usePeer();
   const { permission } = usePermissions();
+  const { supported: relayPoliciesSupported } = useRelayPolicyConfiguration(
+    !!permission.relays?.read,
+  );
+  const showRelays = !!permission.relays?.read && relayPoliciesSupported;
   const { reverseProxies, isLoading: isServicesLoading } = useReverseProxies();
   const { tab, setTab } = usePeerSettings();
 
@@ -378,6 +384,12 @@ const PeerOverviewTabs = () => {
           </TabsTrigger>
         )}
 
+        {showRelays && (
+          <TabsTrigger value="relays" data-testid="peer-relays-tab">
+            <RadioTowerIcon size={16} />
+            Relays
+          </TabsTrigger>
+        )}
         {permission.events.read && <TrafficEventsPeerTabTrigger />}
       </TabsList>
 
@@ -414,6 +426,12 @@ const PeerOverviewTabs = () => {
       {peer.id && permission.peers.delete && (
         <TabsContent value={"peer-job"} className={"pb-8"}>
           <PeerRemoteJobsSection peerID={peer.id} />
+        </TabsContent>
+      )}
+
+      {showRelays && (
+        <TabsContent value="relays" className="pb-8">
+          <PeerRelaySection peer={peer} />
         </TabsContent>
       )}
 
@@ -676,9 +694,7 @@ function PeerInformationCard({ peer }: Readonly<{ peer: Peer }>) {
                   MAC Address
                 </>
               }
-              className={
-                peerMacAddresses(peer).length > 1 ? "items-start" : ""
-              }
+              className={peerMacAddresses(peer).length > 1 ? "items-start" : ""}
               value={peerMacAddresses(peer)[0]}
               extraText={peerMacAddresses(peer).slice(1)}
             />

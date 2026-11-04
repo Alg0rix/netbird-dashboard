@@ -1,0 +1,50 @@
+import type { RelayPolicyStatus } from "@/interfaces/RelayPolicy";
+
+export const relayStatusFixture: RelayPolicyStatus = {
+  peer_a: "peer-a",
+  peer_b: "peer-b",
+  application: "applied",
+  healthy: true,
+  transport: "native_relay",
+  relay_id: "relay-a",
+  policy: {
+    state: "ready",
+    revision: 4,
+    catalog_generation: 2,
+    reselection_generation: 1,
+    digest: "current-policy",
+    force_relay: true,
+    tiers: [
+      [
+        {
+          id: "relay-a",
+          endpoint: "rels://a.example:443",
+          instance_endpoint: "rels://a.example:443",
+          aliases: [],
+          active: true,
+          legacy: false,
+        },
+      ],
+    ],
+    contributors: [{ id: "region-rule", revision: 4, eliminated: ["relay-c"] }],
+    preference_rule: "region-rule",
+    eliminated: ["relay-c"],
+  },
+  endpoints: ["peer-a", "peer-b"].map((id) => ({
+    local_peer_id: id,
+    remote_peer_id: id === "peer-a" ? "peer-b" : "peer-a",
+    revision: 4,
+    catalog_generation: 2,
+    reselection_generation: 1,
+    digest: "current-policy",
+    sequence: 3,
+    attempt: 1,
+    transport: "native_relay",
+    relay_id: "relay-a",
+    state: "applied",
+    reason: "",
+    observed_at: "2026-11-04T12:00:00Z",
+    expires_at: "2026-11-04T12:00:45Z",
+    current: true,
+  })),
+};

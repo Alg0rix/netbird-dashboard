@@ -2,6 +2,7 @@ import { account } from "./account";
 import { coreFixtures } from "./core";
 import { networkFixtures } from "./network";
 import { platformFixtures } from "./platform";
+import { relayPolicyFixtures } from "./relay-policies";
 import { currentUser } from "./users";
 
 export type HandlerContext = {
@@ -19,4 +20,5 @@ export const fixtures: Record<string, Handler> = {
   ...coreFixtures,
   ...networkFixtures,
   ...platformFixtures,
+  ...relayPolicyFixtures,
 };

@@ -19,6 +19,7 @@ const MODULE_KEYS: Array<keyof Permissions["modules"]> = [
   "groups",
   "setup_keys",
   "policies",
+  "relays",
   "assistant",
   "networks",
   "routes",

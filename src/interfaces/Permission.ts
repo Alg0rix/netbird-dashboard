@@ -7,6 +7,7 @@ export interface Permissions {
     setup_keys: Permission;
 
     policies: Permission;
+    relays: Permission;
     assistant: Permission;
 
     networks: Permission;
