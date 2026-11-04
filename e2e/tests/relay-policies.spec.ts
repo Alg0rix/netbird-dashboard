@@ -488,8 +488,8 @@ test.describe.serial("Relay administration and observed paths @relays", () => {
       if (route.request().method() !== "GET") return route.fallback();
       await route.fulfill({
         status: 404,
-        contentType: "application/json",
-        body: JSON.stringify({ message: "Not found" }),
+        contentType: "text/plain; charset=utf-8",
+        body: "404 page not found\n",
       });
     });
     try {
