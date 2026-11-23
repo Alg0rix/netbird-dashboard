@@ -1,4 +1,4 @@
-import Link from "next/link";
+import InlineLink from "@components/InlineLink";
 import {
   RelayEffectivePolicy,
   RelayPolicyConfiguration,
@@ -12,9 +12,14 @@ export function RelayPolicyDetail({
   scope?: "home" | "pair";
   configuration?: RelayPolicyConfiguration;
 }) {
-  if (!policy) return <p>Legacy behavior: no managed {scope} policy.</p>;
+  if (!policy)
+    return (
+      <p className="text-sm text-nb-gray-400">
+        Legacy behavior: no managed {scope} policy.
+      </p>
+    );
   return (
-    <div className="space-y-2 text-sm" data-testid="relay-policy-detail">
+    <div className="flex flex-col gap-2 text-sm text-nb-gray-300" data-testid="relay-policy-detail">
       <p>
         Desired revision {policy.revision} · {policy.state} ·{" "}
         {scope === "home"
@@ -35,18 +40,18 @@ export function RelayPolicyDetail({
       </p>
       <p>Eliminated relays: {policy.eliminated.join(", ") || "None"}</p>
       <p>Preference owner: {policy.preference_rule || "Default"}</p>
-      <ul>
+      <ul className="flex flex-col gap-1">
         {policy.contributors.map((rule) => {
           const home = scope === "home";
           return (
             <li key={rule.id}>
-              <Link
+              <InlineLink
                 href={`/relays?${
                   home ? "profile" : "policy"
                 }=${encodeURIComponent(rule.id)}`}
               >
                 Edit owning {home ? "home profile" : "pair rule"}: {rule.id}
-              </Link>{" "}
+              </InlineLink>{" "}
               (revision {rule.revision}); excludes{" "}
               {rule.eliminated.join(", ") || "none"}. Editing this rule previews
               all its affected peers and pairs.

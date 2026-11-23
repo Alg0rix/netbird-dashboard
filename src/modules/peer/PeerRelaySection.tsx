@@ -27,6 +27,7 @@ import type {
   RelayPolicyStatus,
   RelayRetryResponse,
 } from "@/interfaces/RelayPolicy";
+import { PeerRelayCard } from "@/modules/relay-control/PeerRelayCard";
 import { RelayPolicyDetail } from "@/modules/relay-policies/RelayPolicyDetail";
 import { useRelayPolicyConfiguration } from "@/modules/relay-policies/useRelayPolicyConfiguration";
 import {
@@ -47,6 +48,7 @@ export function PeerRelaySection({ peer }: { peer: Peer }) {
     allowed && configuration.supported,
   );
   const [remote, setRemote] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
   if (!allowed) return <RestrictedAccess page="Relay Policies" />;
   if (
     configuration.error?.code === 404 ||
@@ -67,6 +69,14 @@ export function PeerRelaySection({ peer }: { peer: Peer }) {
   );
   return (
     <div className="px-8 space-y-8" data-testid="peer-relays-section">
+      <PeerRelayCard peer={peer} />
+      <div className="max-w-4xl">
+        <Button variant="secondary" size="xs" onClick={() => setShowDetails((v) => !v)}>
+          {showDetails ? "Hide technical details" : "Technical details"}
+        </Button>
+      </div>
+      {showDetails && (
+        <div className="space-y-8 pt-2">
       <Paragraph>
         Home registration keeps this peer available on relays. Pair transport
         describes the actual path to another authorized peer. Relay policies
@@ -130,6 +140,8 @@ export function PeerRelaySection({ peer }: { peer: Peer }) {
           <p>Choose a remote peer to inspect symmetric pair status.</p>
         )}
       </section>
+        </div>
+      )}
     </div>
   );
 }

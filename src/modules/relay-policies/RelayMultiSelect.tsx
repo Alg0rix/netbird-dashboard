@@ -33,13 +33,13 @@ export function RelayMultiSelect({
   );
   return (
     <fieldset
-      className="space-y-2 min-w-0"
+      className="flex flex-col gap-2 min-w-0"
       data-testid={`relay-select-${label
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "")}`}
     >
-      <legend className="text-sm font-medium">
+      <legend className="text-sm font-medium text-nb-gray-200 mb-1">
         {label} ({values.length} selected)
       </legend>
       <Input
@@ -48,7 +48,7 @@ export function RelayMultiSelect({
         onChange={(event) => setSearch(event.target.value)}
         placeholder="Search by name or ID"
       />
-      <div className="max-h-44 overflow-auto">
+      <div className="max-h-44 overflow-auto rounded-md border border-nb-gray-900 bg-nb-gray-950">
         <CheckboxListPicker
           options={filtered}
           value={values}
@@ -56,7 +56,7 @@ export function RelayMultiSelect({
           close={() => undefined}
         />
         {filtered.length === 0 && (
-          <p className="text-sm">No matching options.</p>
+          <p className="text-sm text-nb-gray-400 p-3">No matching options.</p>
         )}
       </div>
     </fieldset>

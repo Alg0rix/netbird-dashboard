@@ -2,6 +2,7 @@
 
 import Button from "@components/Button";
 import { Checkbox } from "@components/Checkbox";
+import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import {
   RelayCatalogItem,
   RelayConstraints,
@@ -10,6 +11,7 @@ import {
 } from "@/interfaces/RelayPolicy";
 import { emptySelection, moveTier } from "./helpers";
 import { RelayMultiSelect } from "./RelayMultiSelect";
+import { fieldsetClass, Note } from "./ui";
 
 export function RelaySelectionEditor({
   label,
@@ -25,8 +27,8 @@ export function RelaySelectionEditor({
   onChange: (value: RelaySelection) => void;
 }) {
   return (
-    <fieldset className="grid md:grid-cols-2 gap-4 border rounded-md p-4">
-      <legend>{label}</legend>
+    <fieldset className={fieldsetClass}>
+      <legend className="px-2 text-sm font-medium text-nb-gray-200">{label}</legend>
       <RelayMultiSelect
         label={`${label} relays`}
         values={value.relay_ids}
@@ -59,8 +61,8 @@ export function RelayConstraintsEditor({
   onChange: (value: RelayConstraints) => void;
 }) {
   return (
-    <div className="space-y-4">
-      <label className="flex gap-2 items-center">
+    <div className="flex flex-col gap-5">
+      <label className="flex gap-2 items-center text-sm text-nb-gray-200">
         <Checkbox
           checked={value.allow === undefined}
           onCheckedChange={(checked) =>
@@ -83,10 +85,10 @@ export function RelayConstraintsEditor({
       )}
       {value.allow !== undefined &&
         value.allow.relay_ids.length + value.allow.group_ids.length === 0 && (
-          <p role="alert">
+          <Note variant="error" role="alert">
             Explicitly empty allow is invalid. Select relays or allow all
             approved relays.
-          </p>
+          </Note>
         )}
       <RelaySelectionEditor
         label="Exclude"
@@ -96,7 +98,7 @@ export function RelayConstraintsEditor({
         onChange={(exclude) => onChange({ ...value, exclude })}
       />
       {scope === "pair" ? (
-        <label className="flex gap-2 items-center">
+        <label className="flex gap-2 items-center text-sm text-nb-gray-200">
           <Checkbox
             checked={value.force_relay}
             onCheckedChange={(checked) =>
@@ -106,27 +108,29 @@ export function RelayConstraintsEditor({
           Force native relay (disable direct ICE and TURN paths)
         </label>
       ) : (
-        <p>
+        <Note variant="info">
           Home profiles only choose home registration. They do not disable
           direct paths or restrict foreign pair connections. Only pair rules
           force native relay.
-        </p>
+        </Note>
       )}
-      <p className="text-sm">
+      <p className="text-xs text-nb-gray-400">
         Every matching rule constrains the permitted set. Exclusions in an
         inherited rule cannot be undone by another rule.
       </p>
-      <h4>Ordered relay preference tiers</h4>
-      <p className="text-sm">
-        Relays in one tier have equal priority. Tiers are tried in order.
-        Allowing only A pins the path; allowing A and B with A first permits
-        fallback to B. Switching can briefly interrupt traffic. Retrying
-        preferred A is a separate action and does not change priorities.
-      </p>
+      <div className="flex flex-col gap-1">
+        <h4 className="text-base font-medium text-white">Ordered relay preference tiers</h4>
+        <p className="text-sm text-nb-gray-300 max-w-3xl">
+          Relays in one tier have equal priority. Tiers are tried in order.
+          Allowing only A pins the path; allowing A and B with A first permits
+          fallback to B. Switching can briefly interrupt traffic. Retrying
+          preferred A is a separate action and does not change priorities.
+        </p>
+      </div>
       {value.preferences.map((tier, index) => (
         <div
           key={index}
-          className="space-y-2"
+          className="flex flex-col gap-3"
           data-testid="relay-preference-tier"
         >
           <RelaySelectionEditor
@@ -143,8 +147,10 @@ export function RelayConstraintsEditor({
               })
             }
           />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
+              variant="secondary"
+              size="xs"
               data-testid={`relay-tier-up-${index + 1}`}
               aria-label={`Move tier ${index + 1} up`}
               disabled={index === 0}
@@ -155,9 +161,12 @@ export function RelayConstraintsEditor({
                 })
               }
             >
+              <ArrowUp size={12} />
               Move up
             </Button>
             <Button
+              variant="secondary"
+              size="xs"
               aria-label={`Move tier ${index + 1} down`}
               disabled={index === value.preferences.length - 1}
               onClick={() =>
@@ -167,10 +176,12 @@ export function RelayConstraintsEditor({
                 })
               }
             >
+              <ArrowDown size={12} />
               Move down
             </Button>
             <Button
               variant="danger-outline"
+              size="xs"
               aria-label={`Remove tier ${index + 1}`}
               onClick={() =>
                 onChange({
@@ -179,12 +190,15 @@ export function RelayConstraintsEditor({
                 })
               }
             >
+              <Trash2 size={12} />
               Remove tier
             </Button>
           </div>
         </div>
       ))}
       <Button
+        variant="secondary"
+        className="self-start"
         disabled={value.preferences.length >= 64}
         onClick={() =>
           onChange({
@@ -193,6 +207,7 @@ export function RelayConstraintsEditor({
           })
         }
       >
+        <Plus size={14} />
         Add preference tier
       </Button>
     </div>

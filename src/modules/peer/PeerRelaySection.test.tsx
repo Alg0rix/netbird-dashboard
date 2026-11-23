@@ -2,7 +2,7 @@ import {
   act,
   cleanup,
   fireEvent,
-  render,
+  render as rtlRender,
   screen,
   waitFor,
 } from "@testing-library/react";
@@ -19,6 +19,14 @@ import {
   relayStatusMatchesScope,
 } from "./PeerRelaySection.helpers";
 
+// The technical section sits behind a toggle on the peer tab.
+const render = (ui: React.ReactElement) => {
+  const view = rtlRender(ui);
+  const toggle = screen.queryByText("Technical details");
+  if (toggle) fireEvent.click(toggle);
+  return view;
+};
+
 const access = vi.hoisted(() => ({
   read: true,
   update: true,
@@ -27,6 +35,9 @@ const access = vi.hoisted(() => ({
   status: undefined as RelayPolicyStatus | undefined,
   statusError: undefined as { code: number } | undefined,
   post: vi.fn(async (_body: unknown) => ({ generation: 2 })),
+}));
+vi.mock("@/modules/relay-control/PeerRelayCard", () => ({
+  PeerRelayCard: () => null,
 }));
 vi.mock("@/contexts/PermissionsProvider", () => ({
   usePermissions: () => ({

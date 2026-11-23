@@ -1,11 +1,15 @@
 "use client";
 
+import Badge from "@components/Badge";
 import Button from "@components/Button";
+import Card from "@components/Card";
 import { Checkbox } from "@components/Checkbox";
 import { Input } from "@components/Input";
-import Paragraph from "@components/Paragraph";
+import { Label } from "@components/Label";
+import SquareIcon from "@components/SquareIcon";
 import { RestrictedAccess } from "@components/ui/RestrictedAccess";
 import useFetchApi from "@utils/api";
+import { Plus, RadioTower } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { usePermissions } from "@/contexts/PermissionsProvider";
 import { Group } from "@/interfaces/Group";
@@ -28,6 +32,7 @@ import { RelayMultiSelect } from "./RelayMultiSelect";
 import { RelayPolicyDetail } from "./RelayPolicyDetail";
 import { useRelayPolicyConfiguration } from "./useRelayPolicyConfiguration";
 import { useRelayPolicyDraft } from "./useRelayPolicyDraft";
+import { fieldsetClass, Note, RuleCard, Section } from "./ui";
 
 export default function RelayPolicyEditor() {
   const { permission } = usePermissions();
@@ -35,31 +40,41 @@ export default function RelayPolicyEditor() {
   if (!permission.relays.read)
     return <RestrictedAccess hasAccess={false} page="Relays" />;
   if (configuration.isLoading)
-    return <p role="status">Loading relay policies…</p>;
+    return (
+      <p role="status" className="p-default text-nb-gray-400">
+        Loading relay policies…
+      </p>
+    );
   if (
     configuration.error?.code === 404 ||
     configuration.data?.supported === false
   )
     return (
-      <p>
-        Relay policy administration is unavailable on this Management version.
-      </p>
+      <div className="p-default">
+        <Note variant="warning">
+          Relay policy administration is unavailable on this Management version.
+        </Note>
+      </div>
     );
   if (configuration.error && !configuration.data)
     return (
-      <div role="alert">
-        <p>Unable to load relay policies.</p>
-        <Button onClick={() => configuration.mutate()}>Retry loading</Button>
+      <div role="alert" className="p-default flex flex-col gap-3 items-start">
+        <Note variant="error">Unable to load relay policies.</Note>
+        <Button variant="secondary" onClick={() => configuration.mutate()}>
+          Retry loading
+        </Button>
       </div>
     );
   if (!configuration.data || !configuration.supported) return null;
   return (
     <div>
       {configuration.error && (
-        <p role="alert">
-          Unable to refresh the server configuration. Your open draft is
-          retained.
-        </p>
+        <div className="p-default pb-4">
+          <Note variant="warning" role="alert">
+            Unable to refresh the server configuration. Your open draft is
+            retained.
+          </Note>
+        </div>
       )}
       <RelayConfigurationEditor
         configuration={configuration.data}
@@ -147,91 +162,101 @@ export function RelayConfigurationEditor({
       ],
     });
   return (
-    <div className="space-y-6 p-default pb-8" data-testid="relay-policy-editor">
-      <Paragraph>
-        Home profiles choose where a peer registers. They do not constrain
-        foreign pair connections. Symmetric pair rules restrict paths between
-        either side without granting ACL access.
-      </Paragraph>
-      <p>
-        Configuration revision {draft.revision} · Catalog generation{" "}
-        {draft.catalog_generation}. New rules start disabled; enabling
-        restrictions requires compatible endpoints and a valid preview.
-      </p>
+    <div className="flex flex-col gap-8 p-default pb-10 max-w-5xl" data-testid="relay-policy-editor">
+      <Note>
+        <span>
+          Home profiles choose where a peer registers. They do not constrain
+          foreign pair connections. Symmetric pair rules restrict paths between
+          either side without granting ACL access.
+        </span>
+        <span>
+          Configuration revision {draft.revision} · Catalog generation{" "}
+          {draft.catalog_generation}. New rules start disabled; enabling
+          restrictions requires compatible endpoints and a valid preview.
+        </span>
+      </Note>
       {!canEdit && (
-        <p role="status">
+        <Note variant="info" role="status">
           Read-only access. Your role cannot change relay configuration.
-        </p>
+        </Note>
       )}
       {existingRules.home.length + existingRules.pair.length > 1 && (
-        <p role="status">
+        <Note variant="info" role="status">
           Multiple explicit rules match this target. Review the expanded owning
           rules below; no additional rule was created.
-        </p>
+        </Note>
       )}
       {selectedPeer && (
-        <p data-testid="relay-selected-peer">
-          Draft target peer {selectedPeer}. Review the target scope before
-          previewing.
-        </p>
+        <div data-testid="relay-selected-peer">
+          <Note variant="info">
+            Draft target peer {selectedPeer}. Review the target scope before
+            previewing.
+          </Note>
+        </div>
       )}
-      <section className="space-y-3" aria-label="Approved relay catalog">
-        <h2>Approved relay catalog</h2>
-        <p>
-          Published by the operator. Only approved active non-legacy relays can
-          be selected.
-        </p>
-        {catalog.isLoading && <p role="status">Loading catalog…</p>}
+      <Section
+        title="Approved relay catalog"
+        label="Approved relay catalog"
+        description="Published by the operator. Only approved active non-legacy relays can be selected."
+      >
+        {catalog.isLoading && <p role="status" className="text-nb-gray-400">Loading catalog…</p>}
         {catalog.error && (
-          <p role="alert">
+          <Note variant="error" role="alert">
             Catalog unavailable. Reload it before editing relay choices.
-          </p>
+          </Note>
         )}
-        <ul>
+        <div className="grid gap-3 sm:grid-cols-2">
           {catalogItems.map((item) => (
-            <li key={item.id}>
-              <strong>{item.id}</strong> · {item.endpoint} ·{" "}
-              {item.active ? "Active" : "Inactive"}
-              {item.legacy ? " · Legacy (cannot select)" : ""}
-              <p className="text-sm">
+            <Card key={item.id} className="w-full p-4 flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <SquareIcon icon={<RadioTower size={16} />} color="netbird" size="small" />
+                <div className="flex flex-col min-w-0">
+                  <strong className="text-white">{item.id}</strong>
+                  <span className="text-xs text-nb-gray-400 truncate">{item.endpoint}</span>
+                </div>
+                <Badge variant={item.active ? "green" : "gray"} size="xs" className="ml-auto">
+                  {item.active ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+              {item.legacy && (
+                <Badge variant="yellow" size="xs">Legacy (cannot select)</Badge>
+              )}
+              <p className="text-xs text-nb-gray-400">
                 Instance endpoint: {item.instance_endpoint || "Not published"};
                 aliases: {item.aliases.join(", ") || "None"}
               </p>
-            </li>
+            </Card>
           ))}
-        </ul>
+        </div>
         {!catalog.isLoading && !catalog.error && !catalogItems.length && (
-          <p>No approved relays have been published.</p>
+          <p className="text-nb-gray-400">No approved relays have been published.</p>
         )}
-      </section>
+      </Section>
       {(peers.error || groups.error) && (
-        <p role="alert">
+        <Note variant="warning" role="alert">
           Some peer selectors could not load. Existing IDs are preserved. Reload
           before choosing new targets.
-        </p>
+        </Note>
       )}
       <fieldset
         inert={form.busy}
         disabled={form.busy || !canEdit}
-        className="space-y-6"
+        className="flex flex-col gap-8 border-0 p-0 m-0 min-w-0"
       >
-        <section className="space-y-4" aria-label="Relay groups">
-          <h2>Relay groups</h2>
+        <Section title="Relay groups">
           {!draft.groups.length && (
-            <p>No relay groups. Create one to reuse a relay set.</p>
+            <p className="text-nb-gray-400">No relay groups. Create one to reuse a relay set.</p>
           )}
           {draft.groups.map((group, index) => (
-            <details
-              data-testid="relay-group-row"
+            <RuleCard
+              testId="relay-group-row"
               key={group.id}
               open
-              className="border rounded-md p-4 space-y-4"
+              title={group.name}
+              id={group.id}
             >
-              <summary>
-                {group.name} · {group.id}
-              </summary>
-              <label className="block">
-                Group name
+              <div>
+                <Label as="div">Group name</Label>
                 <Input
                   data-testid="relay-resource-name"
                   aria-label="Group name"
@@ -247,7 +272,7 @@ export function RelayConfigurationEditor({
                     })
                   }
                 />
-              </label>
+              </div>
               <RelayMultiSelect
                 label="Group relays"
                 values={group.relay_ids}
@@ -275,9 +300,11 @@ export function RelayConfigurationEditor({
               >
                 Delete group from draft
               </Button>
-            </details>
+            </RuleCard>
           ))}
           <Button
+            variant="secondary"
+            className="self-start"
             data-testid="relay-add-group"
             disabled={!permission.relays.create}
             onClick={() =>
@@ -295,33 +322,30 @@ export function RelayConfigurationEditor({
               })
             }
           >
+            <Plus size={14} />
             Add relay group
           </Button>
-        </section>
-        <section className="space-y-4" aria-label="Home profiles">
-          <h2>Home profiles</h2>
-          <p>
-            Home readiness is separate from pair transport. Lower numeric rule
-            priority wins preferences; all matching constraints still apply.
-          </p>
+        </Section>
+        <Section
+          title="Home profiles"
+          description="Home readiness is separate from pair transport. Lower numeric rule priority wins preferences; all matching constraints still apply."
+        >
           {!draft.home_profiles.length && (
-            <p>No home profiles. Peers use legacy home selection.</p>
+            <p className="text-nb-gray-400">No home profiles. Peers use legacy home selection.</p>
           )}
           {draft.home_profiles.map((profile, index) => (
-            <details
-              data-testid="relay-profile-row"
+            <RuleCard
+              testId="relay-profile-row"
               key={profile.id}
               open={
                 search.get("profile") === profile.id ||
                 existingRules.home.includes(profile.id) ||
                 profile.revision === 0
               }
-              className="border rounded-md p-4 space-y-4"
+              title={profile.name}
+              enabled={profile.enabled}
+              id={profile.id}
             >
-              <summary>
-                {profile.name} · {profile.enabled ? "Enabled" : "Disabled"} ·{" "}
-                {profile.id}
-              </summary>
               <RuleFields
                 value={profile}
                 onChange={(next) => updateHome(index, { ...profile, ...next })}
@@ -357,9 +381,11 @@ export function RelayConfigurationEditor({
               >
                 Delete profile from draft
               </Button>
-            </details>
+            </RuleCard>
           ))}
           <Button
+            variant="secondary"
+            className="self-start"
             data-testid="relay-add-profile"
             disabled={!permission.relays.create}
             onClick={() =>
@@ -380,34 +406,30 @@ export function RelayConfigurationEditor({
               })
             }
           >
+            <Plus size={14} />
             Add home profile
           </Button>
-        </section>
-        <section className="space-y-4" aria-label="Symmetric pair rules">
-          <h2>Symmetric pair rules</h2>
-          <p>
-            Source and destination are interchangeable. The lowest priority
-            number (then rule ID) owns preferences; every matching rule
-            constrains permitted relays.
-          </p>
+        </Section>
+        <Section
+          title="Symmetric pair rules"
+          description="Source and destination are interchangeable. The lowest priority number (then rule ID) owns preferences; every matching rule constrains permitted relays."
+        >
           {!draft.pair_policies.length && (
-            <p>No pair rules. Authorized pairs use legacy paths.</p>
+            <p className="text-nb-gray-400">No pair rules. Authorized pairs use legacy paths.</p>
           )}
           {draft.pair_policies.map((policy, index) => (
-            <details
-              data-testid="relay-policy-row"
+            <RuleCard
+              testId="relay-policy-row"
               key={policy.id}
               open={
                 search.get("policy") === policy.id ||
                 existingRules.pair.includes(policy.id) ||
                 policy.revision === 0
               }
-              className="border rounded-md p-4 space-y-4"
+              title={policy.name}
+              enabled={policy.enabled}
+              id={policy.id}
             >
-              <summary>
-                {policy.name} · {policy.enabled ? "Enabled" : "Disabled"} ·{" "}
-                {policy.id}
-              </summary>
               <RuleFields
                 value={policy}
                 onChange={(next) => updatePair(index, { ...policy, ...next })}
@@ -448,49 +470,58 @@ export function RelayConfigurationEditor({
               >
                 Delete pair rule from draft
               </Button>
-            </details>
+            </RuleCard>
           ))}
           <Button
+            variant="secondary"
+            className="self-start"
             data-testid="relay-add-policy"
             disabled={!permission.relays.create}
             onClick={addPair}
           >
+            <Plus size={14} />
             Add symmetric pair rule
           </Button>
-        </section>
+        </Section>
       </fieldset>
       {form.errors.length > 0 && (
-        <ul role="alert">
-          {form.errors.map((error) => (
-            <li key={error}>{error}</li>
-          ))}
-        </ul>
+        <Note variant="error" role="alert">
+          <ul className="list-disc pl-4">
+            {form.errors.map((error) => (
+              <li key={error}>{error}</li>
+            ))}
+          </ul>
+        </Note>
       )}
       {form.message && (
-        <p role="status" aria-live="polite">
+        <Note variant="success" role="status">
           {form.message}
-        </p>
+        </Note>
       )}
       {form.conflict && (
-        <div data-testid="relay-stale-draft" role="alert" className="space-y-3">
-          <p>
+        <div data-testid="relay-stale-draft" role="alert" className="flex flex-col gap-3 items-start">
+          <Note variant="warning">
             Your full draft may replace changes made by another administrator.
             Review the broader impact after refreshing the revision.
-          </p>
-          <Button
-            data-testid="relay-reload"
-            disabled={form.busy}
-            onClick={form.reload}
-          >
-            Reload latest and discard draft
-          </Button>
-          <Button
-            data-testid="relay-repreview"
-            disabled={form.busy}
-            onClick={form.repreview}
-          >
-            Keep full draft and repreview latest revision
-          </Button>
+          </Note>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="secondary"
+              data-testid="relay-reload"
+              disabled={form.busy}
+              onClick={form.reload}
+            >
+              Reload latest and discard draft
+            </Button>
+            <Button
+              variant="secondary"
+              data-testid="relay-repreview"
+              disabled={form.busy}
+              onClick={form.repreview}
+            >
+              Keep full draft and repreview latest revision
+            </Button>
+          </div>
         </div>
       )}
       {canEdit && (
@@ -505,6 +536,7 @@ export function RelayConfigurationEditor({
             form.conflict
           }
           onClick={form.requestPreview}
+          className="self-start"
         >
           {form.busy ? "Working…" : "Preview all draft changes"}
         </Button>
@@ -512,43 +544,44 @@ export function RelayConfigurationEditor({
       {form.preview && (
         <section
           aria-label="Confirm relay changes"
-          className="border rounded-md p-4 space-y-4"
+          className="rounded-md border border-netbird-400/30 bg-nb-gray-940 p-5 flex flex-col gap-4"
           data-testid="relay-impact-preview"
         >
-          <h2>Review impact before saving</h2>
-          <p>
+          <h2 className="text-lg font-medium text-white">Review impact before saving</h2>
+          <p className="text-sm text-nb-gray-300">
             This replaces the complete configuration, including deletions.
             Revision {form.preview.revision}; {form.preview.home.length} home
             targets and {form.preview.pairs.length} authorized pairs.
           </p>
           {form.preview.truncated && (
-            <p role="alert">
+            <Note variant="warning" role="alert">
               Preview truncated. Narrow the scope to see every affected target
               before saving.
-            </p>
+            </Note>
           )}
           {form.preview.home.map((home) => (
-            <details key={home.peer_id}>
-              <summary>
-                Home: {home.peer_id} · {home.policy?.state ?? "legacy"} ·{" "}
-                {home.unsupported ? "Unsupported client" : "Compatible"}
-              </summary>
+            <RuleCard
+              key={home.peer_id}
+              title={`Home: ${home.peer_id} · ${home.policy?.state ?? "legacy"} · ${
+                home.unsupported ? "Unsupported client" : "Compatible"
+              }`}
+            >
               <RelayPolicyDetail
                 policy={home.policy}
                 scope="home"
                 configuration={draft}
               />
-            </details>
+            </RuleCard>
           ))}
           {form.preview.pairs.map((pair) => (
-            <details key={`${pair.peer_a}/${pair.peer_b}`}>
-              <summary>
-                Pair: {pair.peer_a} ↔ {pair.peer_b} ·{" "}
-                {pair.policy?.state ?? "legacy"} ·{" "}
-                {pair.unsupported ? "Unsupported endpoint" : "Compatible"}
-              </summary>
+            <RuleCard
+              key={`${pair.peer_a}/${pair.peer_b}`}
+              title={`Pair: ${pair.peer_a} ↔ ${pair.peer_b} · ${pair.policy?.state ?? "legacy"} · ${
+                pair.unsupported ? "Unsupported endpoint" : "Compatible"
+              }`}
+            >
               <RelayPolicyDetail policy={pair.policy} configuration={draft} />
-            </details>
+            </RuleCard>
           ))}
           <Button
             data-testid="relay-confirm-save"
@@ -576,9 +609,9 @@ function RuleFields({
   }) => void;
 }) {
   return (
-    <div className="grid md:grid-cols-3 gap-4">
-      <label>
-        Rule name
+    <div className="grid md:grid-cols-3 gap-4 items-end">
+      <div>
+        <Label as="div">Rule name</Label>
         <Input
           data-testid="relay-resource-name"
           aria-label="Rule name"
@@ -586,9 +619,9 @@ function RuleFields({
           maxLength={255}
           onChange={(event) => onChange({ ...value, name: event.target.value })}
         />
-      </label>
-      <label>
-        Rule priority
+      </div>
+      <div>
+        <Label as="div">Rule priority</Label>
         <Input
           aria-label="Rule priority"
           type="number"
@@ -599,8 +632,8 @@ function RuleFields({
             onChange({ ...value, priority: event.target.valueAsNumber })
           }
         />
-      </label>
-      <label className="flex items-center gap-2">
+      </div>
+      <label className="flex items-center gap-2 text-sm text-nb-gray-200 pb-2.5">
         <Checkbox
           checked={value.enabled}
           onCheckedChange={(checked) =>
@@ -628,8 +661,10 @@ function PeerTargets({
   onChange: (value: RelayPeerSelector) => void;
 }) {
   return (
-    <fieldset className="grid md:grid-cols-2 gap-4 border rounded-md p-4">
-      <legend>{label} (peers or peer groups)</legend>
+    <fieldset className={fieldsetClass}>
+      <legend className="px-2 text-sm font-medium text-nb-gray-200">
+        {label} (peers or peer groups)
+      </legend>
       <RelayMultiSelect
         label={`${label} peers`}
         values={value.peer_ids}

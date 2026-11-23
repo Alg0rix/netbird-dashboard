@@ -185,3 +185,11 @@ export const Loading: Story = {
     await findText("Loading relay policies…");
   },
 };
+export const AdvancedRules: Story = {
+  parameters: {
+    nextjs: { navigation: { pathname: "/relays", query: { advanced: "1" } } },
+  },
+  play: async () => {
+    await findText("Home profiles");
+  },
+};
